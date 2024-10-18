@@ -37,6 +37,8 @@ output_file_path = 'K:\\PSYC\\Oberlin_Lab\\2. Projects, Collaborations, and Gran
 data_with_deltaVR.to_excel(output_file_path, index=False)
 print(f"Data with deltas saved to: {output_file_path}")
 
+#Reload updated data
+
 selected_columns = ['Column1', 'Column2', 'Column3'] 
 
 # Step 1: Select only numeric features for PCA
