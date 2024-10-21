@@ -3,6 +3,7 @@
 PCA for FRAP
 """
 
+import os
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -37,14 +38,32 @@ output_file_path = 'K:\\PSYC\\Oberlin_Lab\\2. Projects, Collaborations, and Gran
 data_with_deltaVR.to_excel(output_file_path, index=False)
 print(f"Data with deltas saved to: {output_file_path}")
 
-selected_columns = ['Column1', 'Column2', 'Column3'] 
+# Read updated data
+# Absolute path to the file when using my Mac
+data_path_macbook = '/Users/irisshen/Desktop/PCA/Python/Data_10182024_with_deltaVR.xlsx'
+
+# Check if the file exists 
+if os.path.exists(data_path_macbook):
+    print("File exists!")
+else:
+    print("File does not exist at the absolute path.")
+
+# Load the Excel file into a pandas DataFrame
+deltadata = pd.read_excel(data_path_macbook)
+# Checking my variables 
+print(deltadata.columns)
+
+####################################### PCA #######################################
+# Selecting variables I want to include 
+selected_columns = ['Delta_ConfidenceRecovery', 'Delta_LikelyRelapse30Days', 'Delta_LikelyRelapse1yr',
+                    'Delta_RecoveryImportance', 'Delta_Craving', 'Delta_FutSim', 'Delta_FutConn',
+                    'Delta_AUC', 'DD_IChoRat']
 
 # Step 1: Select only numeric features for PCA
-
-features = data.select_dtypes(include=[float, int]).columns
+features = deltadata.select_dtypes(include=[float, int]).columns
 # Step 2: Standardize the data
 scaler = StandardScaler()
-scaled_data = scaler.fit_transform(data[features])
+scaled_deltadata = scaler.fit_transform(deltadata[features])
 
 # Step 3: Fit PCA
 pca = PCA()
