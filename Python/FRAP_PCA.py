@@ -10,7 +10,9 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-from factor_analyzer import calculate_kmo, calculate_bartlett_sphericity
+from factor_analyzer import calculate_kmo, calculate_bartlett_sphericity, FactorAnalyzer
+import seaborn as sns
+
 
 # Load dataset (FRAP), note we are using the csv file as the cleaned up data
 file_path = r'C:\Users\shen21\Desktop\PCA\Python\Data_10182024.xlsx'
@@ -75,58 +77,71 @@ deltadata = pd.read_excel(data_path)
 # Checking the variables (columns)
 print(deltadata.columns)
 
+# Making sure all vaues are numeric values 
+print(deltadata.dtypes) #both integer and float are numeric types, so it will work fine for PCA
+
+# Clean up NaN (missing values) for PCA purpose
+deltadata_clean = deltadata.dropna()
+deltadata_clean.info()
+participant_ids = deltadata_clean['SubID'].tolist()
+print(participant_ids) #[16, 17, 19, 24, 26, 27, 30, 34, 35, 40, 44, 71, 80, 93, 96, 100], n=16
+#Checking for missing values to ensure
+print(deltadata_clean.isna().sum())
+
 ####################################### PCA #######################################
 # Selecting variables I want to include 
 selected_columns = ['Delta_ConfidenceRecovery', 'Delta_LikelyRelapse30Days', 'Delta_LikelyRelapse1yr',
                     'Delta_RecoveryImportance', 'Delta_Craving', 'Delta_FutSim', 'Delta_FutConn',
                     'Delta_AUC', 'DD_IChoRat']
-# Clean up NaN (missing values)
-deltadata_clean = deltadata.dropna()
-deltadata_clean.info()
-participant_ids = deltadata_clean['SubID'].tolist()
-print(participant_ids) #[16, 17, 19, 24, 26, 27, 30, 34, 35, 40, 44, 71, 80, 93, 96, 100], n=16
+PCA_9variables_data = deltadata_clean[selected_columns]
+PCA_9variables_data.to_csv(r'C:\Users\shen21\Desktop\PCA\Python\PCA_9variables_data.csv', index=False)
 
-# Step 1: Select only numeric features for PCA
-features = deltadata_clean.select_dtypes(include=[float, int]).columns
-
-# Step 2: Standardize the data
-scaler = StandardScaler()
-scaled_deltadata_clean = scaler.fit_transform(deltadata_clean[features])
-
-# Step 3: Performing Kaiser-Meyer-Olkin (KMO) Test and Bartlett’s Test of Sphericity
-from factor_analyzer import calculate_kmo, calculate_bartlett_sphericity
-kmo_all, kmo_model = calculate_kmo(deltadata_clean)
-print(f"KMO Score: {kmo_model}")
-
-# Perform Bartlett's Test
-chi_square_value, p_value = calculate_bartlett_sphericity(deltadata_clean)
-print(f"Bartlett's Test: Chi-Square = {chi_square_value}, p-value = {p_value}")
-
-# Assuming 'data' is your DataFrame
-data = pd.read_excel('Data_10182024.xlsx')
-
-# KMO Test
-kmo_all, kmo_model = calculate_kmo(data)
-print(f"KMO Score: {kmo_model}")
-
+# Step 0: Performing Kaiser-Meyer-Olkin (KMO) Test and Bartlett’s Test of Sphericity
+# KMO
+kmo_all, kmo_model = calculate_kmo(PCA_9variables_data)
+print(f"KMO Score: {kmo_model}") #KMO Score: 0.48112756149640323
 # Bartlett's Test
-chi_square_value, p_value = calculate_bartlett_sphericity(data)
-print(f"Bartlett's Test: Chi-Square = {chi_square_value}, p-value = {p_value}")
+chi_square_value, p_value = calculate_bartlett_sphericity(PCA_9variables_data)
+print(f"Bartlett's Test: Chi-Square = {chi_square_value}, p-value = {p_value}") #Chi-Square = 22.388860370116944, p = 0.9629457075693935
 
+# Step 1: Standardize the data
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(PCA_9variables_data)
+
+# Convert the scaled data back to a DataFrame
+scaled_data_df = pd.DataFrame(scaled_data, columns=selected_columns)
+
+# Step 2: Perform PCA to determine the number of components with eigenvalue > 1
 pca = PCA()
-pca.fit(scaled_deltadata_clean)
+pca.fit(scaled_data_df)
 
-# Eigenvalues (explained variance for each component)
+# Extract components with eigenvalues > 1
 eigenvalues = pca.explained_variance_
+num_components = sum(eigenvalues > 1)
+print(f"Number of components with eigenvalue > 1: {num_components}")
 
-# Keep components with eigenvalues > 1
-n_components_kaiser = sum(eigenvalues > 1)
+# Step 3: Perform Factor Analysis with Varimax rotation for the determined number of components
+fa = FactorAnalyzer(n_factors=num_components, rotation='varimax')
+fa.fit(scaled_data_df)
 
-print(f"Number of components using Kaiser's criterion: {n_components_kaiser}")
+# Get the rotated loadings
+rotated_loadings = fa.loadings_
+loadings_df_rotated = pd.DataFrame(rotated_loadings, columns=[f'PC{i+1}' for i in range(num_components)], index=selected_columns)
 
-plt.plot(range(1, len(pca.explained_variance_) + 1), pca.explained_variance_)
-plt.title('Scree Plot')
-plt.xlabel('Component Number')
-plt.ylabel('Eigenvalue (Explained Variance)')
-plt.axhline(y=1, color='r', linestyle='--')  # Kaiser criterion line
+# Print the rotated loadings
+print(loadings_df_rotated)
+
+# Create a heatmap for the rotated loadings
+plt.figure(figsize=(10, 8))
+ax = sns.heatmap(loadings_df_rotated, annot=True, fmt='.2f', cmap='coolwarm', center=0, linewidths=.5)
+
+# Bold values above a threshold
+for text in ax.texts:
+    value = float(text.get_text())
+    if abs(value) > 0.4:
+        text.set_weight('bold')
+
+plt.title('PCA Loadings Heatmap with Varimax Rotation (Aligned with SPSS Settings)')
+plt.xlabel('Principal Components')
+plt.ylabel('Variables')
 plt.show()
