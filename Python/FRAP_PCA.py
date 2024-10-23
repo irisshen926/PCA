@@ -141,6 +141,99 @@ for text in ax.texts:
     if abs(value) > 0.4:
         text.set_weight('bold')
 
+plt.title('PCA Loadings Heatmap with Varimax Rotation')
+plt.xlabel('Principal Components')
+plt.ylabel('Variables')
+plt.show()
+
+####################################### Run PCA with 8 variables #######################################
+# Selecting variables I want to include 
+selected_columns = ['Delta_ConfidenceRecovery', 'Delta_LikelyRelapse30Days', 'Delta_LikelyRelapse1yr',
+                    'Delta_RecoveryImportance', 'Delta_Craving', 'Delta_FutSim', 'Delta_FutConn',
+                    'Delta_AUC']
+PCA_8variables_data = deltadata_clean[selected_columns]
+PCA_8variables_data.to_csv(r'C:\Users\shen21\Desktop\PCA\Python\PCA_8variables_data.csv', index=False)
+
+# Step 0: Performing Kaiser-Meyer-Olkin (KMO) Test and Bartlett’s Test of Sphericity
+# KMO
+kmo_all, kmo_model = calculate_kmo(PCA_8variables_data)
+print(f"KMO Score: {kmo_model}") 
+# Bartlett's Test
+chi_square_value, p_value = calculate_bartlett_sphericity(PCA_8variables_data)
+print(f"Bartlett's Test: Chi-Square = {chi_square_value}, p-value = {p_value}") 
+
+    # KMO Score: 0.5165349254549665
+    # Bartlett's Test: Chi-Square = 19.47458895022089, p-value = 0.882855112420025
+    # Number of components with eigenvalue > 1: 4
+
+# Step 1: Standardize the data
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(PCA_8variables_data)
+
+# Convert the scaled data back to a DataFrame
+scaled_data_df = pd.DataFrame(scaled_data, columns=selected_columns)
+
+# Step 2: Perform PCA to determine the number of components with eigenvalue > 1
+pca = PCA()
+pca.fit(scaled_data_df)
+
+# Extract components with eigenvalues > 1
+eigenvalues = pca.explained_variance_
+num_components = sum(eigenvalues > 1)
+print(f"Number of components with eigenvalue > 1: {num_components}")
+
+# Step 3: Perform Factor Analysis with Varimax rotation for the determined number of components
+fa = FactorAnalyzer(n_factors=num_components, rotation='varimax')
+fa.fit(scaled_data_df)
+
+# Get the rotated loadings
+rotated_loadings = fa.loadings_
+loadings_df_rotated = pd.DataFrame(rotated_loadings, columns=[f'PC{i+1}' for i in range(num_components)], index=selected_columns)
+
+# Print the rotated loadings
+print(loadings_df_rotated)
+
+# Create a heatmap for the rotated loadings
+plt.figure(figsize=(10, 8))
+ax = sns.heatmap(loadings_df_rotated, annot=True, fmt='.2f', cmap='coolwarm', center=0, linewidths=.5)
+
+# Bold values above a threshold
+for text in ax.texts:
+    value = float(text.get_text())
+    if abs(value) > 0.4:
+        text.set_weight('bold')
+
+plt.title('PCA Loadings Heatmap with Varimax Rotation')
+plt.xlabel('Principal Components')
+plt.ylabel('Variables')
+plt.show()
+
+# Specifying only wanting 3 variables
+n_components = 3
+pca_n3 = PCA(n_components=n_components)
+
+# Assuming 'scaled_data_df' is your standardized DataFrame
+# Perform Factor Analysis with Varimax rotation for the determined number of components
+fa = FactorAnalyzer(n_factors=n_components, rotation='varimax')
+fa.fit(scaled_data_df)
+
+# Get the rotated loadings
+rotated_loadings = fa.loadings_
+loadings_df_rotated = pd.DataFrame(rotated_loadings, columns=[f'PC{i+1}' for i in range(n_components)], index=scaled_data_df.columns)
+
+# Print the rotated loadings
+print(loadings_df_rotated)
+
+# Create a heatmap for the rotated loadings
+plt.figure(figsize=(10, 8))
+ax = sns.heatmap(loadings_df_rotated, annot=True, fmt='.2f', cmap='coolwarm', center=0, linewidths=.5)
+
+# Bold values above a threshold
+for text in ax.texts:
+    value = float(text.get_text())
+    if abs(value) > 0.4:
+        text.set_weight('bold')
+
 plt.title('PCA Loadings Heatmap with Varimax Rotation (Aligned with SPSS Settings)')
 plt.xlabel('Principal Components')
 plt.ylabel('Variables')
